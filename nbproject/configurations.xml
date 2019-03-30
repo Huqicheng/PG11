@@ -692,6 +692,11 @@
           <in>username.c</in>
           <in>wait_error.c</in>
         </df>
+        <df name="pl">
+          <df name="plpgsql">
+            <in>README.md</in>
+          </df>
+        </df>
         <df name="port">
           <in>chklocale.c</in>
           <in>erand48.c</in>
@@ -2982,6 +2987,8 @@
       <item path="src/common/username.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="src/common/wait_error.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/pl/plpgsql/README.md" ex="false" tool="0" flavor2="0">
       </item>
       <item path="src/port/chklocale.c" ex="false" tool="0" flavor2="0">
       </item>

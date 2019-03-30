@@ -464,8 +464,14 @@ PortalStart(Portal portal, ParamListInfo params,
 	PG_TRY();
 	{
 		ActivePortal = portal;
+                
+                /* 
+                 * Here we are, set the current owner as the protal resowner
+                 * which will be cleared at commit phase.  
+                 */
 		if (portal->resowner)
 			CurrentResourceOwner = portal->resowner;
+                
 		PortalContext = portal->portalContext;
 
 		oldContext = MemoryContextSwitchTo(PortalContext);
@@ -485,7 +491,10 @@ PortalStart(Portal portal, ParamListInfo params,
 		{
 			case PORTAL_ONE_SELECT:
 
-				/* Must set snapshot before starting executor. */
+				/* 
+                                 * Must set snapshot before starting executor. 
+                                 * For simple 'select' clause, must get snapshot first.
+                                 */
 				if (snapshot)
 					PushActiveSnapshot(snapshot);
 				else
@@ -586,6 +595,7 @@ PortalStart(Portal portal, ParamListInfo params,
 
 			case PORTAL_MULTI_QUERY:
 				/* Need do nothing now */
+                                /* For stored procedure, should execute here, thus no query descripter required. */
 				portal->tupDesc = NULL;
 				break;
 		}
@@ -705,7 +715,10 @@ PortalRun(Portal portal, long count, bool isTopLevel, bool run_once,
 
 	/* Initialize completion tag to empty string */
 	if (completionTag)
-		completionTag[0] = '\0';
+        {
+                completionTag[0] = '\0';
+        }
+		
 
 	if (log_executor_stats && portal->strategy != PORTAL_MULTI_QUERY)
 	{
@@ -1256,7 +1269,7 @@ PortalRunMulti(Portal portal,
 			 */
 			if (!active_snapshot_set)
 			{
-				Snapshot	snapshot = GetTransactionSnapshot();
+				Snapshot   snapshot = GetTransactionSnapshot();
 
 				/* If told to, register the snapshot and save in portal */
 				if (setHoldSnapshot)

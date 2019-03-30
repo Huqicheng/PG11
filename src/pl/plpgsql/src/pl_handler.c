@@ -216,6 +216,7 @@ _PG_init(void)
  */
 PG_FUNCTION_INFO_V1(plpgsql_call_handler);
 
+// Caller to this function is ExecuteCallStmt: backend/tcop/utility.c:652 standard_ProcessUtility
 Datum
 plpgsql_call_handler(PG_FUNCTION_ARGS)
 {
@@ -251,16 +252,21 @@ plpgsql_call_handler(PG_FUNCTION_ARGS)
 		 * subhandler
 		 */
 		if (CALLED_AS_TRIGGER(fcinfo))
-			retval = PointerGetDatum(plpgsql_exec_trigger(func,
-														  (TriggerData *) fcinfo->context));
+                {
+                        retval = PointerGetDatum(plpgsql_exec_trigger(func, (TriggerData *) fcinfo->context));
+                }
+			
 		else if (CALLED_AS_EVENT_TRIGGER(fcinfo))
 		{
-			plpgsql_exec_event_trigger(func,
-									   (EventTriggerData *) fcinfo->context);
+			plpgsql_exec_event_trigger(func, (EventTriggerData *) fcinfo->context);
 			retval = (Datum) 0;
 		}
 		else
-			retval = plpgsql_exec_function(func, fcinfo, NULL, !nonatomic);
+                {
+                        // execute the function here
+                        retval = plpgsql_exec_function(func, fcinfo, NULL, !nonatomic);
+                }
+			
 	}
 	PG_CATCH();
 	{
@@ -272,7 +278,6 @@ plpgsql_call_handler(PG_FUNCTION_ARGS)
 	PG_END_TRY();
 
 	func->use_count--;
-
 	func->cur_estate = save_cur_estate;
 
 	/*

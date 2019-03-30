@@ -32,6 +32,9 @@ win32ver.rc
 lib*dll.def
 lib*.pc
 
+# Mac OS
+.DS_Store
+
 # Local excludes in root directory
 /GNUmakefile
 /config.cache
