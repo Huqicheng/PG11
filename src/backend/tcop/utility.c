@@ -648,6 +648,7 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			}
 			break;
 
+                // Handle call statemnt
 		case T_CallStmt:
 			ExecuteCallStmt(castNode(CallStmt, parsetree), params, isAtomicContext, dest);
 			break;

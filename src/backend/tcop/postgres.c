@@ -996,14 +996,14 @@ exec_simple_query(const char *query_string)
 	 */
 	foreach(parsetree_item, parsetree_list)
 	{
-		RawStmt    *parsetree = lfirst_node(RawStmt, parsetree_item);
+		RawStmt         *parsetree = lfirst_node(RawStmt, parsetree_item);
 		bool		snapshot_set = false;
-		const char *commandTag;
+		const char      *commandTag;
 		char		completionTag[COMPLETION_TAG_BUFSIZE];
-		List	   *querytree_list,
-				   *plantree_list;
+		List            *querytree_list,
+                                *plantree_list;
 		Portal		portal;
-		DestReceiver *receiver;
+		DestReceiver    *receiver;
 		int16		format;
 
 		/*
@@ -1016,7 +1016,7 @@ exec_simple_query(const char *query_string)
 
 		set_ps_display(commandTag, false);
 
-		BeginCommand(commandTag, dest);
+		BeginCommand(commandTag, dest); // Do nothing here
 
 		/*
 		 * If we are in an aborted transaction, reject all commands except
@@ -1028,13 +1028,17 @@ exec_simple_query(const char *query_string)
 		 */
 		if (IsAbortedTransactionBlockState() &&
 			!IsTransactionExitStmt(parsetree->stmt))
-			ereport(ERROR,
-					(errcode(ERRCODE_IN_FAILED_SQL_TRANSACTION),
-					 errmsg("current transaction is aborted, "
+			ereport(
+                                    ERROR,
+                                    (errcode(
+                                        ERRCODE_IN_FAILED_SQL_TRANSACTION),
+					errmsg("current transaction is aborted, "
 							"commands ignored until end of transaction block"),
-					 errdetail_abort()));
+					errdetail_abort())
+                                );
 
 		/* Make sure we are in a transaction command */
+                /* Start a new transaction, for pgxc, will start a new transaction at GTM. */
 		start_xact_command();
 
 		/*
@@ -1074,6 +1078,7 @@ exec_simple_query(const char *query_string)
 										CURSOR_OPT_PARALLEL_OK, NULL);
 
 		/* Done with the snapshot used for parsing/planning */
+                /* For Stored Procedure, no snapshots needed. */
 		if (snapshot_set)
 			PopActiveSnapshot();
 
@@ -1093,15 +1098,17 @@ exec_simple_query(const char *query_string)
 		 * we are passing here is in MessageContext, which will outlive the
 		 * portal anyway.
 		 */
-		PortalDefineQuery(portal,
-						  NULL,
-						  query_string,
-						  commandTag,
-						  plantree_list,
-						  NULL);
+		PortalDefineQuery(
+                                    portal,
+                                    NULL,
+                                    query_string,
+                                    commandTag,
+                                    plantree_list,
+                                    NULL
+                                );
 
 		/*
-		 * Start the portal.  No parameters here.
+		 * Start the portal.  No parameters here. Mark the portal as ready.
 		 */
 		PortalStart(portal, NULL, 0, InvalidSnapshot);
 
@@ -1118,11 +1125,14 @@ exec_simple_query(const char *query_string)
 
 			if (!stmt->ismove)
 			{
-				Portal		fportal = GetPortalByName(stmt->portalname);
+				Portal	fportal = GetPortalByName(stmt->portalname);
 
 				if (PortalIsValid(fportal) &&
 					(fportal->cursorOptions & CURSOR_OPT_BINARY))
-					format = 1; /* BINARY */
+                                {
+                                        format = 1; /* BINARY */
+                                }
+					
 			}
 		}
 		PortalSetResultFormat(portal, 1, &format);
@@ -1132,7 +1142,10 @@ exec_simple_query(const char *query_string)
 		 */
 		receiver = CreateDestReceiver(dest);
 		if (dest == DestRemote)
-			SetRemoteDestReceiverParams(receiver, portal);
+                {
+                        SetRemoteDestReceiverParams(receiver, portal);
+                }
+			
 
 		/*
 		 * Switch back to transaction context for execution.
@@ -1141,17 +1154,20 @@ exec_simple_query(const char *query_string)
 
 		/*
 		 * Run the portal to completion, and then drop it (and the receiver).
+                 * The actual executor for the query.
 		 */
-		(void) PortalRun(portal,
-						 FETCH_ALL,
-						 true,	/* always top level */
-						 true,
-						 receiver,
-						 receiver,
-						 completionTag);
+		(void) PortalRun(
+                                portal,
+                                FETCH_ALL,
+                                true, /* always top level */
+                                true,
+                                receiver,
+                                receiver,
+                                completionTag);
 
 		receiver->rDestroy(receiver);
 
+                /* Done, we can drop the portal. */
 		PortalDrop(portal, false);
 
 		if (lnext(parsetree_item) == NULL)

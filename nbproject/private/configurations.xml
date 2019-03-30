@@ -2856,6 +2856,7 @@
               <in>plerrcodes.h</in>
               <in>plpgsql.h</in>
             </df>
+            <in>README.md</in>
           </df>
           <df name="plpython">
             <df name="expected">
